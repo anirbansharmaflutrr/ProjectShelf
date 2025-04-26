@@ -17,7 +17,14 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: true,
+        required: function() {
+            return !this.googleId; // Password not required if using Google Auth
+        },
+    },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true, // Allows null values and ensures uniqueness only for non-null values
     },
     profilePicture: {
         type: String,
@@ -41,14 +48,47 @@ const userSchema = new mongoose.Schema({
         primaryColor: String,
         secondaryColor: String,
         accentColor: String,
-    }
+    },
+    // Analytics fields
+    lastLogin: {
+        type: Date,
+        default: Date.now
+    },
+    loginCount: {
+        type: Number,
+        default: 0
+    },
+    visitStats: [{
+        date: {
+            type: Date,
+            default: Date.now
+        },
+        count: {
+            type: Number,
+            default: 0
+        }
+    }],
+    projectsViewed: [{
+        projectId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Project'
+        },
+        viewCount: {
+            type: Number,
+            default: 0
+        },
+        lastViewed: {
+            type: Date,
+            default: Date.now
+        }
+    }]
 }, {
     timestamps: true
 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-    if (!this.isModified('password')) return next();
+    if (!this.isModified('password') || !this.password) return next();
     
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -57,8 +97,9 @@ userSchema.pre('save', async function(next) {
 
 // Method to compare password
 userSchema.methods.matchPassword = async function(enteredPassword) {
+    if (!this.password) return false;
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
 const User = mongoose.model('User', userSchema);
-module.exports = User; 
+module.exports = User;

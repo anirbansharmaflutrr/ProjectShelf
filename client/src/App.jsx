@@ -6,6 +6,7 @@ import Layout from './components/layout/Layout';
 // Import pages (to be created next)
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import AuthSuccess from './pages/auth/AuthSuccess';
 import Dashboard from './pages/dashboard/Dashboard';
 import Projects from './pages/projects/Projects';
 import ProjectDetails from './pages/projects/ProjectDetails';
@@ -34,6 +35,7 @@ function App() {
                         {/* Public Routes */}
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
+                        <Route path="/auth/success" element={<AuthSuccess />} />
                         <Route path="/:username" element={<PublicPortfolio />} />
                         <Route path="/projects/:id/public" element={<PublicProjectDetails />} />
 

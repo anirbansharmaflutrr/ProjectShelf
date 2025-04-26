@@ -19,6 +19,17 @@ export const AuthProvider = ({ children }) => {
         } else {
             setLoading(false);
         }
+
+        // Check if redirected from Google OAuth with token
+        const urlParams = new URLSearchParams(window.location.search);
+        const oauthToken = urlParams.get('token');
+        
+        if (oauthToken) {
+            localStorage.setItem('token', oauthToken);
+            // Clean the URL by removing token param
+            window.history.replaceState({}, document.title, window.location.pathname);
+            loadUser();
+        }
     }, []);
 
     const loadUser = async () => {
@@ -26,6 +37,9 @@ export const AuthProvider = ({ children }) => {
             const { data } = await api.get('/api/users/profile');
             setUser(data);
             setError(null);
+            
+            // Record page view for analytics
+            recordPageView();
         } catch (error) {
             console.error('Error loading user profile:', error);
             
@@ -88,6 +102,49 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Function to initiate Google OAuth login
+    const googleLogin = async () => {
+        try {
+            // First check if Google OAuth is configured on the server
+            const response = await api.get('/api/auth/google');
+            
+            // If we get here, it means the server returned an error rather than redirecting
+            // This happens when Google OAuth is not configured
+            if (response && response.data && response.data.message) {
+                setError(response.data.message);
+            }
+        } catch (error) {
+            // If status is 0, it means we're being redirected to Google, which is expected behavior
+            if (error.request && error.request.status === 0) {
+                // This is actually the success case - we're being redirected to Google
+                window.location.href = `${import.meta.env.VITE_API_URL || ''}/api/auth/google`;
+            } else if (error.response && error.response.status === 501) {
+                // Google OAuth not configured
+                setError(error.response.data.message || 'Google login is not available at this time');
+            } else {
+                setError('Failed to connect to Google authentication service');
+            }
+        }
+    };
+
+    // Record page view for analytics
+    const recordPageView = async () => {
+        try {
+            await api.post('/api/analytics/page-view');
+        } catch (error) {
+            console.error('Error recording page view:', error);
+        }
+    };
+
+    // Record project view for analytics
+    const recordProjectView = async (projectId) => {
+        try {
+            await api.post(`/api/analytics/project-view/${projectId}`);
+        } catch (error) {
+            console.error('Error recording project view:', error);
+        }
+    };
+
     const value = {
         user,
         loading,
@@ -95,7 +152,10 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
-        updateProfile
+        updateProfile,
+        googleLogin,
+        recordPageView,
+        recordProjectView
     };
 
     return (
@@ -105,4 +165,4 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-export default AuthContext; 
+export default AuthContext;
